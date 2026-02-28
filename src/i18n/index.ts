@@ -18,6 +18,14 @@ import frPages from './locales/fr/pages.json';
 import frSettings from './locales/fr/settings.json';
 import frSubtitles from './locales/fr/subtitles.json';
 import frUniversal from './locales/fr/universal.json';
+import ptChannels from './locales/pt/channels.json';
+import ptCommon from './locales/pt/common.json';
+import ptDownload from './locales/pt/download.json';
+import ptMetadata from './locales/pt/metadata.json';
+import ptPages from './locales/pt/pages.json';
+import ptSettings from './locales/pt/settings.json';
+import ptSubtitles from './locales/pt/subtitles.json';
+import ptUniversal from './locales/pt/universal.json';
 import viChannels from './locales/vi/channels.json';
 import viCommon from './locales/vi/common.json';
 import viDownload from './locales/vi/download.json';
@@ -75,6 +83,16 @@ const resources = {
     pages: zhCNPages,
     settings: zhCNSettings,
     subtitles: zhCNSubtitles,
+  },
+  pt: {
+    common: ptCommon,
+    channels: ptChannels,
+    download: ptDownload,
+    metadata: ptMetadata,
+    universal: ptUniversal,
+    pages: ptPages,
+    settings: ptSettings,
+    subtitles: ptSubtitles,
   },
 };
 
