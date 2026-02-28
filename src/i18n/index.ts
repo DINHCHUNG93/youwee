@@ -26,6 +26,15 @@ import ptPages from './locales/pt/pages.json';
 import ptSettings from './locales/pt/settings.json';
 import ptSubtitles from './locales/pt/subtitles.json';
 import ptUniversal from './locales/pt/universal.json';
+
+import ruChannels from './locales/ru/channels.json';
+import ruCommon from './locales/ru/common.json';
+import ruDownload from './locales/ru/download.json';
+import ruMetadata from './locales/ru/metadata.json';
+import ruPages from './locales/ru/pages.json';
+import ruSettings from './locales/ru/settings.json';
+import ruSubtitles from './locales/ru/subtitles.json';
+import ruUniversal from './locales/ru/universal.json';
 import viChannels from './locales/vi/channels.json';
 import viCommon from './locales/vi/common.json';
 import viDownload from './locales/vi/download.json';
@@ -93,6 +102,16 @@ const resources = {
     pages: ptPages,
     settings: ptSettings,
     subtitles: ptSubtitles,
+  },
+  ru: {
+    common: ruCommon,
+    channels: ruChannels,
+    download: ruDownload,
+    metadata: ruMetadata,
+    universal: ruUniversal,
+    pages: ruPages,
+    settings: ruSettings,
+    subtitles: ruSubtitles,
   },
 };
 
