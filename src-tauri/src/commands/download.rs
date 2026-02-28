@@ -739,7 +739,8 @@ async fn handle_tokio_download(
     let mut current_stream_size: Option<u64> = None;
     let mut final_filepath: Option<String> = None;
     let recent_output = Arc::new(Mutex::new(VecDeque::new()));
-    
+    let stderr_filepath: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+
     let quality_display = match quality.as_str() {
         "8k" => Some("8K".to_string()),
         "4k" => Some("4K".to_string()),
@@ -758,6 +759,7 @@ async fn handle_tokio_download(
     let stderr_id = id.clone();
     let stderr_url = url.clone();
     let stderr_recent_output = recent_output.clone();
+    let stderr_fp_clone = stderr_filepath.clone();
     let stderr_task = if let Some(stderr_handle) = stderr {
         Some(tokio::spawn(async move {
             let mut stderr_reader = BufReader::new(stderr_handle).lines();
@@ -766,7 +768,19 @@ async fn handle_tokio_download(
                     break;
                 }
                 push_recent_output_shared(&stderr_recent_output, &line);
-                
+
+                // On Windows, yt-dlp may print --print after_move:filepath to stderr.
+                // Capture it here as a fallback in case stdout doesn't contain the path.
+                let t = line.trim();
+                if !t.is_empty() && !t.starts_with('[')
+                    && (t.ends_with(".mp4") || t.ends_with(".mkv") || t.ends_with(".mp3")
+                        || t.ends_with(".m4a") || t.ends_with(".opus") || t.ends_with(".webm"))
+                {
+                    if let Ok(mut guard) = stderr_fp_clone.lock() {
+                        *guard = Some(t.to_string());
+                    }
+                }
+
                 // Parse progress from stderr (live streams output here)
                 if let Some((percent, speed, eta, pi, pc, downloaded_size, elapsed_time)) = parse_progress(&line) {
                     let progress = DownloadProgress {
@@ -789,7 +803,7 @@ async fn handle_tokio_download(
                     };
                     stderr_app.emit("download-progress", progress).ok();
                 }
-                
+
                 // Log stderr if enabled
                 if should_log_stderr && !line.trim().is_empty() {
                     add_log_internal("stderr", line.trim(), None, Some(&stderr_url)).ok();
@@ -889,12 +903,22 @@ async fn handle_tokio_download(
     if let Some(task) = stderr_task {
         task.abort(); // Stop reading stderr when stdout is done
     }
-    
+
+    // Fallback: if stdout didn't yield a filepath (happens on some Windows yt-dlp builds
+    // where --print after_move:filepath goes to stderr instead), use what stderr captured.
+    if final_filepath.is_none() {
+        if let Ok(guard) = stderr_filepath.lock() {
+            if guard.is_some() {
+                final_filepath = guard.clone();
+            }
+        }
+    }
+
     let status = process
         .wait()
         .await
         .map_err(|e| BackendError::from_message(format!("Process error: {}", e)).to_wire_string())?;
-    
+
     if status.success() {
         let actual_filesize = final_filepath.as_ref()
             .and_then(|fp| std::fs::metadata(fp).ok())
