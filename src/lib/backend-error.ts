@@ -113,11 +113,16 @@ function parseWireMessage(message: string): BackendErrorPayload | null {
   if (!message.startsWith(BACKEND_ERROR_PREFIX)) return null;
   const payload = message.slice(BACKEND_ERROR_PREFIX.length);
   try {
-    const parsed = JSON.parse(payload) as BackendErrorPayload;
-    if (!parsed || typeof parsed.code !== 'string' || typeof parsed.message !== 'string') {
+    const parsed: unknown = JSON.parse(payload);
+    if (
+      !parsed ||
+      typeof parsed !== 'object' ||
+      typeof (parsed as Record<string, unknown>).code !== 'string' ||
+      typeof (parsed as Record<string, unknown>).message !== 'string'
+    ) {
       return null;
     }
-    return parsed;
+    return parsed as BackendErrorPayload;
   } catch {
     return null;
   }
