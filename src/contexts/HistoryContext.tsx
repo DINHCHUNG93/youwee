@@ -358,6 +358,19 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [refreshHistory]);
 
+  // Refresh history whenever any download completes (including audio)
+  useEffect(() => {
+    const unlisten = listen<DownloadProgress>('download-progress', (event) => {
+      if (event.payload.status === 'finished') {
+        // Delay slightly to ensure Rust has finished writing the DB record
+        setTimeout(() => refreshHistory(), 800);
+      }
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [refreshHistory]);
+
   return (
     <HistoryContext.Provider
       value={{
