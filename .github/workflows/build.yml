@@ -529,7 +529,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           draft: false
           prerelease: false
-          generate_release_notes: false
+          generate_release_notes: true
           body_path: RELEASE_BODY.md
           files: |
             artifacts/**/*.dmg
