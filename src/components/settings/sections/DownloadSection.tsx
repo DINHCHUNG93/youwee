@@ -1,4 +1,4 @@
-import { Film, Gauge, Radio, RotateCcw, ShieldCheck } from 'lucide-react';
+import { Film, Gauge, Radio, Rocket, RotateCcw, ShieldCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import {
@@ -32,6 +32,8 @@ export function DownloadSection({ highlightId }: DownloadSectionProps) {
     updateEmbedThumbnail,
     updateLiveFromStart,
     updateSpeedLimit,
+    updateUseAria2,
+    updateAria2Args,
     updateAutoRetry,
     updateSponsorBlock,
     updateSponsorBlockMode,
@@ -333,6 +335,41 @@ export function DownloadSection({ highlightId }: DownloadSectionProps) {
             </div>
           </div>
         </SettingsRow>
+      </SettingsSection>
+
+      <SettingsDivider />
+
+      {/* Aria2 Integration */}
+      <SettingsSection
+        title={t('download.aria2')}
+        description={t('download.aria2Desc')}
+        icon={<Rocket className="w-5 h-5 text-white" />}
+        iconClassName="bg-gradient-to-br from-teal-500 to-cyan-600 shadow-teal-500/20"
+      >
+        <SettingsRow
+          id="aria2-toggle"
+          label={t('download.aria2Toggle')}
+          description={t('download.aria2ToggleDesc')}
+          highlight={highlightId === 'aria2-toggle'}
+        >
+          <Switch checked={settings.useAria2} onCheckedChange={updateUseAria2} />
+        </SettingsRow>
+
+        {settings.useAria2 && (
+          <SettingsRow
+            id="aria2-args"
+            label={t('download.aria2Args')}
+            description={t('download.aria2ArgsDesc')}
+            highlight={highlightId === 'aria2-args'}
+          >
+            <Input
+              value={settings.aria2Args}
+              onChange={(e) => updateAria2Args(e.target.value)}
+              placeholder={t('download.aria2ArgsPlaceholder')}
+              className="h-9 w-full md:w-[340px]"
+            />
+          </SettingsRow>
+        )}
       </SettingsSection>
     </div>
   );

@@ -187,6 +187,8 @@ function saveSettings(settings: DownloadSettings) {
         speedLimitEnabled: settings.speedLimitEnabled,
         speedLimitValue: settings.speedLimitValue,
         speedLimitUnit: settings.speedLimitUnit,
+        useAria2: settings.useAria2,
+        aria2Args: settings.aria2Args,
         autoRetryEnabled: settings.autoRetryEnabled,
         autoRetryMaxAttempts: settings.autoRetryMaxAttempts,
         autoRetryDelaySeconds: settings.autoRetryDelaySeconds,
@@ -258,6 +260,9 @@ interface DownloadContextType {
   updateLiveFromStart: (enabled: boolean) => void;
   // Speed limit settings
   updateSpeedLimit: (enabled: boolean, value: number, unit: 'K' | 'M' | 'G') => void;
+  // External downloader settings
+  updateUseAria2: (enabled: boolean) => void;
+  updateAria2Args: (args: string) => void;
   // Auto retry settings
   updateAutoRetry: (enabled: boolean, maxAttempts: number, delaySeconds: number) => void;
   // SponsorBlock settings
@@ -311,6 +316,9 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       speedLimitEnabled: saved.speedLimitEnabled === true, // Default to false (unlimited)
       speedLimitValue: saved.speedLimitValue || 10,
       speedLimitUnit: saved.speedLimitUnit || 'M',
+      // External downloader settings
+      useAria2: saved.useAria2 === true, // Default to false
+      aria2Args: saved.aria2Args || '',
       // Auto retry settings
       autoRetryEnabled: saved.autoRetryEnabled === true, // Default to false
       autoRetryMaxAttempts: clampAutoRetryMaxAttempts(
@@ -538,6 +546,8 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
       outputPath: currentSettings.outputPath,
       videoCodec: currentSettings.videoCodec,
       audioBitrate: currentSettings.audioBitrate,
+      useAria2: currentSettings.useAria2,
+      aria2Args: currentSettings.aria2Args,
       subtitleMode: currentSettings.subtitleMode,
       subtitleLangs: [...currentSettings.subtitleLangs],
       subtitleEmbed: currentSettings.subtitleEmbed,
@@ -608,6 +618,8 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
         outputPath: currentSettings.outputPath,
         videoCodec: currentSettings.videoCodec,
         audioBitrate: mediaType === 'audio' ? audioBitrate : currentSettings.audioBitrate,
+        useAria2: currentSettings.useAria2,
+        aria2Args: currentSettings.aria2Args,
         subtitleMode: currentSettings.subtitleMode,
         subtitleLangs: [...currentSettings.subtitleLangs],
         subtitleEmbed: currentSettings.subtitleEmbed,
@@ -660,6 +672,8 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
           outputPath: settingsRef.current.outputPath,
           videoCodec: settingsRef.current.videoCodec,
           audioBitrate: settingsRef.current.audioBitrate,
+          useAria2: settingsRef.current.useAria2,
+          aria2Args: settingsRef.current.aria2Args,
           subtitleMode: settingsRef.current.subtitleMode,
           subtitleLangs: [...settingsRef.current.subtitleLangs],
           subtitleEmbed: settingsRef.current.subtitleEmbed,
@@ -919,6 +933,9 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
             speedLimit: settings.speedLimitEnabled
               ? `${settings.speedLimitValue}${settings.speedLimitUnit}`
               : null,
+            // External downloader settings
+            useAria2: itemSettings?.useAria2 ?? settings.useAria2,
+            aria2Args: itemSettings?.aria2Args ?? settings.aria2Args,
             // SponsorBlock settings
             sponsorblockRemove: sponsorBlockArgs.remove,
             sponsorblockMark: sponsorBlockArgs.mark,
@@ -1238,6 +1255,22 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const updateUseAria2 = useCallback((useAria2: boolean) => {
+    setSettings((s) => {
+      const newSettings = { ...s, useAria2 };
+      saveSettings(newSettings);
+      return newSettings;
+    });
+  }, []);
+
+  const updateAria2Args = useCallback((aria2Args: string) => {
+    setSettings((s) => {
+      const newSettings = { ...s, aria2Args };
+      saveSettings(newSettings);
+      return newSettings;
+    });
+  }, []);
+
   const updateAutoRetry = useCallback(
     (autoRetryEnabled: boolean, autoRetryMaxAttempts: number, autoRetryDelaySeconds: number) => {
       setSettings((s) => {
@@ -1352,6 +1385,8 @@ export function DownloadProvider({ children }: { children: ReactNode }) {
     updateEmbedThumbnail,
     updateLiveFromStart,
     updateSpeedLimit,
+    updateUseAria2,
+    updateAria2Args,
     updateAutoRetry,
     // SponsorBlock settings
     updateSponsorBlock,

@@ -138,7 +138,48 @@ fn recent_output_snapshot(buffer: &Arc<Mutex<VecDeque<String>>>) -> Vec<String> 
         .unwrap_or_default()
 }
 
+fn is_aria2_not_found_line(line: &str) -> bool {
+    let lower = line.to_lowercase();
+    (lower.contains("aria2c") || lower.contains("aria2"))
+        && (lower.contains("not found")
+            || lower.contains("no such file")
+            || lower.contains("is not recognized"))
+}
+
+fn normalize_aria2_args(raw_args: &str) -> Option<String> {
+    let trimmed = raw_args.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    if let Some(rest) = trimmed.strip_prefix("aria2c:") {
+        let normalized = rest.trim_start();
+        return if normalized.is_empty() {
+            None
+        } else {
+            Some(format!("aria2c:{}", normalized))
+        };
+    }
+    if let Some(rest) = trimmed.strip_prefix("aria2:") {
+        let normalized = rest.trim_start();
+        return if normalized.is_empty() {
+            None
+        } else {
+            Some(format!("aria2c:{}", normalized))
+        };
+    }
+    Some(format!("aria2c:{}", trimmed))
+}
+
 fn build_download_error_message(exit_code: Option<i32>, recent_lines: &[String]) -> BackendError {
+    if recent_lines.iter().any(|line| is_aria2_not_found_line(line)) {
+        return BackendError::new(
+            crate::types::code::ARIA2_NOT_FOUND,
+            "aria2c not found. Install aria2 and ensure aria2c is available in PATH.",
+        )
+        .with_retryable(false);
+    }
+
     let reason = recent_lines
         .iter()
         .rev()
@@ -197,6 +238,9 @@ pub async fn download_video(
     live_from_start: Option<bool>,
     // Speed limit settings
     speed_limit: Option<String>,
+    // External downloader settings
+    use_aria2: Option<bool>,
+    aria2_args: Option<String>,
     // SponsorBlock settings
     sponsorblock_remove: Option<String>,  // comma-separated categories to remove
     sponsorblock_mark: Option<String>,    // comma-separated categories to mark as chapters
@@ -337,6 +381,18 @@ pub async fn download_video(
         if !limit.is_empty() {
             args.push("--limit-rate".to_string());
             args.push(limit.clone());
+        }
+    }
+
+    // External downloader settings (aria2c)
+    if use_aria2.unwrap_or(false) {
+        args.push("--downloader".to_string());
+        args.push("aria2c".to_string());
+        if let Some(raw_args) = aria2_args.as_ref() {
+            if let Some(normalized_args) = normalize_aria2_args(raw_args) {
+                args.push("--downloader-args".to_string());
+                args.push(normalized_args);
+            }
         }
     }
     

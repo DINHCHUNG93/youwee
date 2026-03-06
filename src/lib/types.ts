@@ -54,6 +54,8 @@ export interface ItemDownloadSettings {
   outputPath: string;
   videoCodec: VideoCodec;
   audioBitrate: AudioBitrate;
+  useAria2: boolean;
+  aria2Args: string;
   subtitleMode: SubtitleMode;
   subtitleLangs: string[];
   subtitleEmbed: boolean;
@@ -71,6 +73,8 @@ export interface ItemUniversalSettings {
   format: Format;
   outputPath: string;
   audioBitrate: AudioBitrate;
+  useAria2: boolean;
+  aria2Args: string;
   timeRangeStart?: string;
   timeRangeEnd?: string;
   autoRetryEnabled: boolean;
@@ -154,6 +158,9 @@ export interface DownloadSettings {
   speedLimitEnabled: boolean; // true = limited, false = unlimited
   speedLimitValue: number; // e.g. 10
   speedLimitUnit: 'K' | 'M' | 'G'; // KB/s, MB/s, GB/s
+  // External downloader settings
+  useAria2: boolean; // Use aria2c as yt-dlp external downloader
+  aria2Args: string; // Custom aria2 arguments (raw or aria2c: prefixed)
   // Auto retry settings
   autoRetryEnabled: boolean; // Retry transient failures automatically
   autoRetryMaxAttempts: number; // Number of retries after initial failure (1-10)

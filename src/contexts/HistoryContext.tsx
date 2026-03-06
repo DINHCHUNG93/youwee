@@ -184,6 +184,8 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
       const logStderr = localStorage.getItem('youwee_log_stderr') !== 'false';
       let useBunRuntime = false;
       let useActualPlayerJs = false;
+      let useAria2 = false;
+      let aria2Args = '';
       let savedOutputPath = '';
       try {
         const savedSettings = localStorage.getItem('youwee-settings');
@@ -191,6 +193,8 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
           const parsed = JSON.parse(savedSettings);
           useBunRuntime = parsed.useBunRuntime || false;
           useActualPlayerJs = parsed.useActualPlayerJs || false;
+          useAria2 = parsed.useAria2 === true;
+          aria2Args = parsed.aria2Args || '';
           savedOutputPath = parsed.outputPath || '';
         }
       } catch (e) {
@@ -301,6 +305,9 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
           cookieFilePath,
           // Proxy settings
           proxyUrl,
+          // External downloader settings
+          useAria2,
+          aria2Args,
         });
 
         // Mark as completed
