@@ -2,7 +2,13 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { localizeUnknownError } from '@/lib/backend-error';
-import type { DownloadProgress, HistoryEntry, HistoryFilter } from '@/lib/types';
+import type {
+  DownloadProgress,
+  HistoryAdvancedFilters,
+  HistoryEntry,
+  HistoryFilter,
+  HistorySort,
+} from '@/lib/types';
 
 // Re-download task state
 interface RedownloadTask {
@@ -19,12 +25,17 @@ interface HistoryContextType {
   entries: HistoryEntry[];
   filter: HistoryFilter;
   search: string;
+  advancedFilters: HistoryAdvancedFilters;
+  sort: HistorySort;
   loading: boolean;
   totalCount: number;
   maxEntries: number;
   redownloadTasks: Map<string, RedownloadTask>;
   setFilter: (filter: HistoryFilter) => void;
   setSearch: (search: string) => void;
+  setAdvancedFilters: (updates: Partial<HistoryAdvancedFilters>) => void;
+  clearAdvancedFilters: () => void;
+  setSort: (sort: HistorySort) => void;
   setMaxEntries: (max: number) => void;
   refreshHistory: () => Promise<void>;
   deleteEntry: (id: string) => Promise<void>;
@@ -39,6 +50,73 @@ interface HistoryContextType {
 const HistoryContext = createContext<HistoryContextType | null>(null);
 
 const MAX_HISTORY_KEY = 'youwee_max_history';
+const HISTORY_SORT_KEY = 'youwee_history_sort';
+
+const DEFAULT_ADVANCED_FILTERS: HistoryAdvancedFilters = {
+  mediaType: 'all',
+  datePreset: 'all',
+  downloadedAtFrom: null,
+  downloadedAtTo: null,
+  customDateFrom: null,
+  customDateTo: null,
+  formats: [],
+  qualities: [],
+};
+
+const SORT_OPTIONS: HistorySort[] = ['recent', 'oldest', 'title', 'size'];
+
+function getStartOfDayEpochSeconds(date: Date): number {
+  const value = new Date(date);
+  value.setHours(0, 0, 0, 0);
+  return Math.floor(value.getTime() / 1000);
+}
+
+function getEndOfDayEpochSeconds(date: Date): number {
+  const value = new Date(date);
+  value.setHours(23, 59, 59, 999);
+  return Math.floor(value.getTime() / 1000);
+}
+
+function parseLocalDate(dateString?: string | null): Date | null {
+  if (!dateString) return null;
+  const parsed = new Date(`${dateString}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function buildResolvedHistoryFilters(filters: HistoryAdvancedFilters): HistoryAdvancedFilters {
+  let downloadedAtFrom: number | null = null;
+  let downloadedAtTo: number | null = null;
+
+  const now = new Date();
+  if (filters.datePreset === 'today') {
+    downloadedAtFrom = getStartOfDayEpochSeconds(now);
+    downloadedAtTo = getEndOfDayEpochSeconds(now);
+  } else if (filters.datePreset === 'last7days') {
+    const from = new Date(now);
+    from.setDate(from.getDate() - 6);
+    downloadedAtFrom = getStartOfDayEpochSeconds(from);
+    downloadedAtTo = getEndOfDayEpochSeconds(now);
+  } else if (filters.datePreset === 'last30days') {
+    const from = new Date(now);
+    from.setDate(from.getDate() - 29);
+    downloadedAtFrom = getStartOfDayEpochSeconds(from);
+    downloadedAtTo = getEndOfDayEpochSeconds(now);
+  } else if (filters.datePreset === 'custom') {
+    const fromDate = parseLocalDate(filters.customDateFrom);
+    const toDate = parseLocalDate(filters.customDateTo);
+    if (fromDate) downloadedAtFrom = getStartOfDayEpochSeconds(fromDate);
+    if (toDate) downloadedAtTo = getEndOfDayEpochSeconds(toDate);
+  }
+
+  return {
+    ...filters,
+    downloadedAtFrom,
+    downloadedAtTo,
+    mediaType: filters.mediaType || 'all',
+    formats: filters.formats || [],
+    qualities: filters.qualities || [],
+  };
+}
 
 interface RenameDownloadedFileResult {
   newFilepath: string;
@@ -49,6 +127,15 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [filter, setFilter] = useState<HistoryFilter>('all');
   const [search, setSearch] = useState('');
+  const [advancedFilters, setAdvancedFiltersState] =
+    useState<HistoryAdvancedFilters>(DEFAULT_ADVANCED_FILTERS);
+  const [sort, setSortState] = useState<HistorySort>(() => {
+    const saved = localStorage.getItem(HISTORY_SORT_KEY) as HistorySort | null;
+    if (saved && SORT_OPTIONS.includes(saved)) {
+      return saved;
+    }
+    return 'recent';
+  });
   const [loading, setLoading] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
   const [maxEntries, setMaxEntriesState] = useState(() => {
@@ -100,11 +187,25 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(MAX_HISTORY_KEY, String(max));
   }, []);
 
+  const setAdvancedFilters = useCallback((updates: Partial<HistoryAdvancedFilters>) => {
+    setAdvancedFiltersState((current) => ({ ...current, ...updates }));
+  }, []);
+
+  const clearAdvancedFilters = useCallback(() => {
+    setAdvancedFiltersState(DEFAULT_ADVANCED_FILTERS);
+  }, []);
+
+  const setSort = useCallback((nextSort: HistorySort) => {
+    setSortState(nextSort);
+    localStorage.setItem(HISTORY_SORT_KEY, nextSort);
+  }, []);
+
   const refreshHistory = useCallback(async () => {
     setLoading(true);
     try {
       const sourceFilter = filter === 'all' ? null : filter;
       const searchParam = search.trim() || null;
+      const resolvedFilters = buildResolvedHistoryFilters(advancedFilters);
 
       const [result, count] = await Promise.all([
         invoke<HistoryEntry[]>('get_history', {
@@ -112,10 +213,13 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
           offset: 0,
           source: sourceFilter,
           search: searchParam,
+          filters: resolvedFilters,
+          sort,
         }),
         invoke<number>('get_history_count', {
           source: sourceFilter,
           search: searchParam,
+          filters: resolvedFilters,
         }),
       ]);
 
@@ -126,7 +230,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [filter, search]);
+  }, [filter, search, advancedFilters, sort]);
 
   const deleteEntry = useCallback(async (id: string) => {
     try {
@@ -427,12 +531,17 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
         entries,
         filter,
         search,
+        advancedFilters,
+        sort,
         loading,
         totalCount,
         maxEntries,
         redownloadTasks,
         setFilter,
         setSearch,
+        setAdvancedFilters,
+        clearAdvancedFilters,
+        setSort,
         setMaxEntries,
         refreshHistory,
         deleteEntry,

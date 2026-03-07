@@ -306,7 +306,20 @@ export type HistoryFilter =
   | 'twitter'
   | 'bilibili'
   | 'other';
+export type HistoryMediaType = 'all' | 'video' | 'audio';
+export type HistoryDatePreset = 'all' | 'today' | 'last7days' | 'last30days' | 'custom';
 export type HistorySort = 'recent' | 'oldest' | 'title' | 'size';
+
+export interface HistoryAdvancedFilters {
+  mediaType: HistoryMediaType;
+  datePreset: HistoryDatePreset;
+  downloadedAtFrom?: number | null;
+  downloadedAtTo?: number | null;
+  customDateFrom?: string | null;
+  customDateTo?: string | null;
+  formats: string[];
+  qualities: string[];
+}
 
 // AI types
 export type AIProvider = 'gemini' | 'openai' | 'deepseek' | 'qwen' | 'ollama' | 'proxy';

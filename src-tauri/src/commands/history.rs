@@ -5,7 +5,7 @@ use crate::database::{
     get_history_count_from_db, get_history_from_db, update_history_filepath_and_title,
     update_history_filepath_and_title_by_id, update_history_summary,
 };
-use crate::types::HistoryEntry;
+use crate::types::{HistoryAdvancedFilters, HistoryEntry, HistorySort};
 
 #[tauri::command]
 pub fn add_history(
@@ -48,8 +48,10 @@ pub fn get_history(
     offset: Option<i64>,
     source: Option<String>,
     search: Option<String>,
+    filters: Option<HistoryAdvancedFilters>,
+    sort: Option<HistorySort>,
 ) -> Result<Vec<HistoryEntry>, String> {
-    get_history_from_db(limit, offset, source, search)
+    get_history_from_db(limit, offset, source, search, filters, sort)
 }
 
 #[tauri::command]
@@ -63,8 +65,12 @@ pub fn clear_history() -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn get_history_count(source: Option<String>, search: Option<String>) -> Result<i64, String> {
-    get_history_count_from_db(source, search)
+pub fn get_history_count(
+    source: Option<String>,
+    search: Option<String>,
+    filters: Option<HistoryAdvancedFilters>,
+) -> Result<i64, String> {
+    get_history_count_from_db(source, search, filters)
 }
 
 #[tauri::command]
