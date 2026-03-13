@@ -8,6 +8,7 @@ import { MeteorTransition } from '@/components/effects/MeteorTransition';
 import { FFmpegDialog } from '@/components/FFmpegDialog';
 import type { Page } from '@/components/layout';
 import { MainLayout } from '@/components/layout';
+import { MusicPlayer } from '@/components/player';
 import type { SettingsSectionId } from '@/components/settings';
 import { UpdateDialog } from '@/components/UpdateDialog';
 import { AIProvider } from '@/contexts/AIContext';
@@ -17,6 +18,7 @@ import { DownloadProvider, useDownload } from '@/contexts/DownloadContext';
 import { HistoryProvider } from '@/contexts/HistoryContext';
 import { LogProvider } from '@/contexts/LogContext';
 import { MetadataProvider } from '@/contexts/MetadataContext';
+import { PlayerProvider } from '@/contexts/PlayerContext';
 import { ProcessingProvider } from '@/contexts/ProcessingContext';
 import { SubtitleProvider } from '@/contexts/SubtitleContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
@@ -330,6 +332,7 @@ function AppContent() {
         {currentPage === 'library' && <HistoryPage />}
         {currentPage === 'logs' && <LogsPage />}
         {currentPage === 'settings' && <SettingsPage initialSection={settingsInitialSection} />}
+        <MusicPlayer />
       </MainLayout>
 
       <UpdateDialog
@@ -373,17 +376,19 @@ export function App() {
             <ChannelsProvider>
               <LogProvider>
                 <HistoryProvider>
-                  <AIProvider>
-                    <ProcessingProvider>
-                      <SubtitleProvider>
-                        <MetadataProvider>
-                          <UpdaterWrapper>
-                            <AppContent />
-                          </UpdaterWrapper>
-                        </MetadataProvider>
-                      </SubtitleProvider>
-                    </ProcessingProvider>
-                  </AIProvider>
+                  <PlayerProvider>
+                    <AIProvider>
+                      <ProcessingProvider>
+                        <SubtitleProvider>
+                          <MetadataProvider>
+                            <UpdaterWrapper>
+                              <AppContent />
+                            </UpdaterWrapper>
+                          </MetadataProvider>
+                        </SubtitleProvider>
+                      </ProcessingProvider>
+                    </AIProvider>
+                  </PlayerProvider>
                 </HistoryProvider>
               </LogProvider>
             </ChannelsProvider>

@@ -1,6 +1,16 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import { syncAssetScopePaths } from '@/lib/asset-access';
+import { collectAssetScopeCandidates } from '@/lib/asset-paths';
 import { localizeUnknownError } from '@/lib/backend-error';
 import type { DownloadProgress, HistoryEntry, HistoryFilter } from '@/lib/types';
 
@@ -50,6 +60,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
     return saved ? parseInt(saved, 10) : 500;
   });
   const [redownloadTasks, setRedownloadTasks] = useState<Map<string, RedownloadTask>>(new Map());
+  const lastAssetScopeKeyRef = useRef('');
 
   // Listen for download progress events for re-downloads
   useEffect(() => {
@@ -115,6 +126,30 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
 
       setEntries(result);
       setTotalCount(count);
+
+      const scopeCandidates = result
+        .filter((entry) => entry.filepath.trim())
+        .map((entry) => entry.filepath);
+
+      try {
+        const savedSettings = localStorage.getItem('youwee-settings');
+        if (savedSettings) {
+          const parsed = JSON.parse(savedSettings) as { outputPath?: string };
+          if (parsed.outputPath) {
+            scopeCandidates.push(parsed.outputPath);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to parse output path for asset scope sync:', error);
+      }
+
+      const scopeKey = collectAssetScopeCandidates(scopeCandidates).sort().join('\n');
+      if (scopeKey && scopeKey !== lastAssetScopeKeyRef.current) {
+        lastAssetScopeKeyRef.current = scopeKey;
+        void syncAssetScopePaths(scopeCandidates).catch((error) => {
+          console.error('Failed to sync asset scope paths:', error);
+        });
+      }
     } catch (error) {
       console.error('Failed to fetch history:', error);
     } finally {

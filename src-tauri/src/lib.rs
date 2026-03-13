@@ -186,6 +186,8 @@ pub fn run() {
             commands::get_history_count,
             commands::open_file_location,
             commands::check_file_exists,
+            commands::allow_asset_file,
+            commands::sync_asset_scope_paths,
             commands::update_summary,
             commands::add_summary_only_history,
             commands::open_macos_privacy_settings,
