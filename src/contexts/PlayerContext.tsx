@@ -10,14 +10,10 @@ import {
 } from 'react';
 import { useHistory } from '@/contexts/HistoryContext';
 import { ensureAssetPathAccess } from '@/lib/asset-access';
-import { isPlayableAudioEntry, reconcilePlayableAudioQueue } from '@/lib/player-queue';
+import { reconcilePlayableAudioQueue } from '@/lib/player-queue';
 import type { HistoryEntry } from '@/lib/types';
 
 export type PlayMode = 'sequence' | 'repeat-one' | 'shuffle';
-
-export function isAudioEntry(entry: HistoryEntry): boolean {
-  return isPlayableAudioEntry(entry);
-}
 
 interface PlayerContextType {
   queue: HistoryEntry[];
@@ -62,7 +58,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (m === 'shuffle') return Math.floor(Math.random() * total);
     return (current + 1) % total;
   }, []);
-
   // Use refs to keep the ended handler in sync without recreating the audio element.
   const modeRef = useRef(mode);
   const queueRef = useRef(queue);
@@ -77,6 +72,52 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     currentIndexRef.current = currentIndex;
   }, [currentIndex]);
 
+  const loadAndPlayAtIndex = useCallback(async (queueToUse: HistoryEntry[], index: number) => {
+    const audio = audioRef.current;
+    if (!audio || queueToUse.length === 0) return;
+    const entry = queueToUse[index];
+    if (!entry) return;
+
+    setQueue(queueToUse);
+    setCurrentIndex(index);
+
+    audio.pause();
+    audio.src = '';
+    audio.currentTime = 0;
+    setCurrentTime(0);
+    setDuration(0);
+
+    try {
+      const cleanPath = await ensureAssetPathAccess(entry.filepath);
+      const src = convertFileSrc(cleanPath);
+      audio.src = src;
+      audio.currentTime = 0;
+
+      const tryPlay = async (attempt: number) => {
+        try {
+          await audio.play();
+        } catch (err) {
+          // On some setups the very first play attempt after launching the app
+          // can fail while asset scopes/decoders warm up. Retry once so that
+          // the user's first click still results in playback.
+          if (attempt < 2) {
+            setTimeout(() => {
+              void tryPlay(attempt + 1);
+            }, 80);
+          } else {
+            console.warn('[Player] Failed to start playback after retry:', err);
+            setIsPlaying(false);
+          }
+        }
+      };
+
+      void tryPlay(1);
+    } catch (error) {
+      console.error('[Player] Failed to authorize asset path:', error);
+      setIsPlaying(false);
+    }
+  }, []);
+
   // Init audio element once
   useEffect(() => {
     const audio = new Audio();
@@ -90,7 +131,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const ci = currentIndexRef.current;
       if (q.length === 0) return;
       const next = getNextIndex(ci, q.length, m);
-      setCurrentIndex(next);
+      void loadAndPlayAtIndex(q, next);
     };
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
@@ -98,20 +139,24 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       console.error('[Player] Audio error:', audio.error?.message, 'src:', audio.src);
       setIsPlaying(false);
 
-      const failedEntryId = queueRef.current[currentIndexRef.current]?.id;
-      const nextQueue = queueRef.current.filter((entry) => entry.id !== failedEntryId);
+      const currentQueue = queueRef.current;
+      const currentIndexSnapshot = currentIndexRef.current;
+      const failedEntryId = currentQueue[currentIndexSnapshot]?.id;
+
+      // If we don't have a valid current track or there's only one track,
+      // keep the queue as-is and just stop playback so the user can retry.
+      if (!failedEntryId || currentQueue.length <= 1) {
+        return;
+      }
+
+      // For multi-track queues, skip the failed track but keep the player open.
+      const nextQueue = currentQueue.filter((entry) => entry.id !== failedEntryId);
       if (nextQueue.length === 0) {
-        audio.pause();
-        audio.src = '';
-        setQueue([]);
-        setCurrentIndex(0);
-        setCurrentTime(0);
-        setDuration(0);
         return;
       }
 
       setQueue(nextQueue);
-      setCurrentIndex(Math.min(currentIndexRef.current, nextQueue.length - 1));
+      setCurrentIndex(Math.min(currentIndexSnapshot, nextQueue.length - 1));
     };
 
     audio.addEventListener('timeupdate', onTimeUpdate);
@@ -131,7 +176,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       audio.pause();
       audio.src = '';
     };
-  }, [getNextIndex]);
+  }, [getNextIndex, loadAndPlayAtIndex]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -139,49 +184,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [volume]);
 
-  // Load and play whenever currentIndex or queue changes
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || queue.length === 0) return;
-    const entry = queue[currentIndex];
-    if (!entry) return;
-    let cancelled = false;
-
-    audio.pause();
-    audio.src = '';
-    audio.currentTime = 0;
-    setCurrentTime(0);
-    setDuration(0);
-
-    const loadCurrentTrack = async () => {
-      try {
-        const cleanPath = await ensureAssetPathAccess(entry.filepath);
-        if (cancelled) return;
-
-        const src = convertFileSrc(cleanPath);
-        audio.src = src;
-        audio.currentTime = 0;
-        audio.play().catch(() => setIsPlaying(false));
-      } catch (error) {
-        console.error('[Player] Failed to authorize asset path:', error);
-        setIsPlaying(false);
-      }
-    };
-
-    void loadCurrentTrack();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentIndex, queue]);
-
-  const playFrom = useCallback((newQueue: HistoryEntry[], index: number) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    setQueue(newQueue);
-    setCurrentIndex(index);
-    // Actual load + play is handled by the effect above
-  }, []);
+  const playFrom = useCallback(
+    (newQueue: HistoryEntry[], index: number) => {
+      void loadAndPlayAtIndex(newQueue, index);
+    },
+    [loadAndPlayAtIndex],
+  );
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
@@ -194,22 +202,25 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [queue.length]);
 
   const playNext = useCallback(() => {
-    if (queue.length === 0) return;
-    const next = getNextIndex(currentIndex, queue.length, mode);
-    setCurrentIndex(next);
-  }, [currentIndex, queue.length, mode, getNextIndex]);
+    const q = queueRef.current;
+    if (q.length === 0) return;
+    const next = getNextIndex(currentIndexRef.current, q.length, modeRef.current);
+    void loadAndPlayAtIndex(q, next);
+  }, [getNextIndex, loadAndPlayAtIndex]);
 
   const playPrev = useCallback(() => {
-    if (queue.length === 0) return;
+    const q = queueRef.current;
+    if (q.length === 0) return;
     const audio = audioRef.current;
     // If more than 3s in, restart current track; otherwise go to previous
     if (audio && audio.currentTime > 3) {
       audio.currentTime = 0;
+      setCurrentTime(0);
       return;
     }
-    const prev = (currentIndex - 1 + queue.length) % queue.length;
-    setCurrentIndex(prev);
-  }, [currentIndex, queue.length]);
+    const prev = (currentIndexRef.current - 1 + q.length) % q.length;
+    void loadAndPlayAtIndex(q, prev);
+  }, [loadAndPlayAtIndex]);
 
   const seek = useCallback((time: number) => {
     const audio = audioRef.current;
@@ -230,6 +241,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('youwee_player_mode', m);
   }, []);
 
+  // Keep a ref of the latest queue/currentIndex for effects that shouldn't
+  // re-run just because playback state changes.
   const close = useCallback(() => {
     const audio = audioRef.current;
     if (audio) {
@@ -244,13 +257,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (queue.length === 0) return;
+    const currentQueue = queueRef.current;
+    if (currentQueue.length === 0) return;
 
-    const reconciled = reconcilePlayableAudioQueue(queue, currentIndex, entries);
+    const currentIndexSnapshot = currentIndexRef.current;
+
+    const reconciled = reconcilePlayableAudioQueue(currentQueue, currentIndexSnapshot, entries);
     const sameQueue =
-      reconciled.queue.length === queue.length &&
-      reconciled.currentIndex === currentIndex &&
-      reconciled.queue.every((entry, index) => entry.id === queue[index]?.id);
+      reconciled.queue.length === currentQueue.length &&
+      reconciled.currentIndex === currentIndexSnapshot &&
+      reconciled.queue.every((entry, index) => entry.id === currentQueue[index]?.id);
 
     if (sameQueue) return;
 
@@ -261,7 +277,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
     setQueue(reconciled.queue);
     setCurrentIndex(reconciled.currentIndex);
-  }, [entries, queue, currentIndex, close]);
+  }, [entries, close]);
 
   const currentEntry = queue[currentIndex] ?? null;
 

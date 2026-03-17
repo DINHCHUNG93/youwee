@@ -230,7 +230,7 @@ export function HistoryItem({ entry }: HistoryItemProps) {
             onClick={handlePlayAudio}
             className={cn(
               'absolute bottom-1.5 left-1.5 w-6 h-6 rounded-full flex items-center justify-center shadow-sm',
-              'bg-emerald-500/85 text-white',
+              'bg-primary text-primary-foreground hover:bg-primary/90',
               'opacity-0 group-hover:opacity-100 transition-opacity',
               isCurrentAudio && 'opacity-100',
             )}
