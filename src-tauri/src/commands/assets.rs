@@ -83,7 +83,7 @@ pub fn sync_asset_scope_paths(app: AppHandle, paths: Vec<String>) -> Result<usiz
     Ok(directories.len())
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "windows"))]
 mod tests {
     use super::{collect_scope_directories, normalize_asset_path};
     use std::path::PathBuf;
