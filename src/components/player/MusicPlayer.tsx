@@ -10,13 +10,13 @@ import {
   VolumeX,
   X,
 } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type PlayMode, usePlayer } from '@/contexts/PlayerContext';
 import { cn } from '@/lib/utils';
 
 function formatTime(secs: number): string {
-  if (!isFinite(secs) || secs < 0) return '0:00';
+  if (!Number.isFinite(secs) || secs < 0) return '0:00';
   const m = Math.floor(secs / 60);
   const s = Math.floor(secs % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
@@ -42,6 +42,12 @@ export function MusicPlayer() {
   } = usePlayer();
 
   const [thumbError, setThumbError] = useState(false);
+
+  // Reset thumbnail error whenever the current track changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: we intentionally depend on the current entry id
+  useEffect(() => {
+    setThumbError(false);
+  }, [currentEntry?.id]);
 
   const handleSeek = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {

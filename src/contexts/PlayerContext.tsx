@@ -58,10 +58,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (m === 'shuffle') return Math.floor(Math.random() * total);
     return (current + 1) % total;
   }, []);
+
   // Use refs to keep the ended handler in sync without recreating the audio element.
   const modeRef = useRef(mode);
   const queueRef = useRef(queue);
   const currentIndexRef = useRef(currentIndex);
+  // Monotonic id to ensure only the latest load/play request can win.
+  const playRequestIdRef = useRef(0);
+
+  const commitQueueState = useCallback((nextQueue: HistoryEntry[], nextIndex: number) => {
+    queueRef.current = nextQueue;
+    currentIndexRef.current = nextIndex;
+    setQueue(nextQueue);
+    setCurrentIndex(nextIndex);
+  }, []);
+
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
@@ -72,51 +83,76 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     currentIndexRef.current = currentIndex;
   }, [currentIndex]);
 
-  const loadAndPlayAtIndex = useCallback(async (queueToUse: HistoryEntry[], index: number) => {
-    const audio = audioRef.current;
-    if (!audio || queueToUse.length === 0) return;
-    const entry = queueToUse[index];
-    if (!entry) return;
+  const loadAndPlayAtIndex = useCallback(
+    async (queueToUse: HistoryEntry[], index: number, autoPlay: boolean = true) => {
+      // Capture a unique id for this play request so that if multiple
+      // requests overlap in time (e.g. user quickly clicks different
+      // tracks), only the most recent one is allowed to actually
+      // change the audio source and start playback.
+      const requestId = ++playRequestIdRef.current;
 
-    setQueue(queueToUse);
-    setCurrentIndex(index);
+      const audio = audioRef.current;
+      if (!audio || queueToUse.length === 0) return;
+      const entry = queueToUse[index];
+      if (!entry) return;
 
-    audio.pause();
-    audio.src = '';
-    audio.currentTime = 0;
-    setCurrentTime(0);
-    setDuration(0);
-
-    try {
-      const cleanPath = await ensureAssetPathAccess(entry.filepath);
-      const src = convertFileSrc(cleanPath);
-      audio.src = src;
+      // Optimistically reset timing state so the UI reflects that
+      // we are preparing a new track, but do not yet commit queue/index.
+      audio.pause();
+      audio.src = '';
       audio.currentTime = 0;
+      setCurrentTime(0);
+      setDuration(0);
 
-      const tryPlay = async (attempt: number) => {
-        try {
-          await audio.play();
-        } catch (err) {
-          // On some setups the very first play attempt after launching the app
-          // can fail while asset scopes/decoders warm up. Retry once so that
-          // the user's first click still results in playback.
-          if (attempt < 2) {
-            setTimeout(() => {
-              void tryPlay(attempt + 1);
-            }, 80);
-          } else {
-            console.warn('[Player] Failed to start playback after retry:', err);
-            setIsPlaying(false);
-          }
+      try {
+        const cleanPath = await ensureAssetPathAccess(entry.filepath);
+
+        // If a newer request has been issued while we were awaiting
+        // asset access, abandon this load to avoid older requests
+        // overriding the user's latest choice.
+        if (requestId !== playRequestIdRef.current) {
+          return;
         }
-      };
 
-      void tryPlay(1);
-    } catch (error) {
-      console.error('[Player] Failed to authorize asset path:', error);
-      setIsPlaying(false);
-    }
-  }, []);
+        const latestAudio = audioRef.current;
+        if (!latestAudio) return;
+
+        // Commit queue/index only when this request is still the latest.
+        commitQueueState(queueToUse, index);
+
+        const src = convertFileSrc(cleanPath);
+        latestAudio.pause();
+        latestAudio.src = src;
+        latestAudio.currentTime = 0;
+
+        if (autoPlay) {
+          const tryPlay = async (attempt: number) => {
+            try {
+              await latestAudio.play();
+            } catch (err) {
+              // On some setups the very first play attempt after launching the app
+              // can fail while asset scopes/decoders warm up. Retry once so that
+              // the user's first click still results in playback.
+              if (attempt < 2) {
+                setTimeout(() => {
+                  void tryPlay(attempt + 1);
+                }, 80);
+              } else {
+                console.warn('[Player] Failed to start playback after retry:', err);
+                setIsPlaying(false);
+              }
+            }
+          };
+
+          void tryPlay(1);
+        }
+      } catch (error) {
+        console.error('[Player] Failed to authorize asset path:', error);
+        setIsPlaying(false);
+      }
+    },
+    [commitQueueState],
+  );
 
   // Init audio element once
   useEffect(() => {
@@ -155,8 +191,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setQueue(nextQueue);
-      setCurrentIndex(Math.min(currentIndexSnapshot, nextQueue.length - 1));
+      commitQueueState(nextQueue, Math.min(currentIndexSnapshot, nextQueue.length - 1));
     };
 
     audio.addEventListener('timeupdate', onTimeUpdate);
@@ -176,7 +211,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       audio.pause();
       audio.src = '';
     };
-  }, [getNextIndex, loadAndPlayAtIndex]);
+  }, [commitQueueState, getNextIndex, loadAndPlayAtIndex]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -244,17 +279,20 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // Keep a ref of the latest queue/currentIndex for effects that shouldn't
   // re-run just because playback state changes.
   const close = useCallback(() => {
+    // Invalidate any in-flight load/play requests so that they
+    // cannot reopen the player after it has been closed.
+    playRequestIdRef.current += 1;
+
     const audio = audioRef.current;
     if (audio) {
       audio.pause();
       audio.src = '';
     }
-    setQueue([]);
-    setCurrentIndex(0);
+    commitQueueState([], 0);
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
-  }, []);
+  }, [commitQueueState]);
 
   useEffect(() => {
     const currentQueue = queueRef.current;
@@ -275,9 +313,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setQueue(reconciled.queue);
-    setCurrentIndex(reconciled.currentIndex);
-  }, [entries, close]);
+    const previousEntry = currentQueue[currentIndexSnapshot] ?? null;
+    const nextEntry = reconciled.queue[reconciled.currentIndex] ?? null;
+
+    const shouldReload =
+      reconciled.currentIndex !== currentIndexSnapshot || previousEntry?.id !== nextEntry?.id;
+
+    if (shouldReload) {
+      const audio = audioRef.current;
+      const shouldAutoplay = audio ? !audio.paused : true;
+      void loadAndPlayAtIndex(reconciled.queue, reconciled.currentIndex, shouldAutoplay);
+      return;
+    }
+
+    commitQueueState(reconciled.queue, reconciled.currentIndex);
+  }, [entries, close, loadAndPlayAtIndex, commitQueueState]);
 
   const currentEntry = queue[currentIndex] ?? null;
 
