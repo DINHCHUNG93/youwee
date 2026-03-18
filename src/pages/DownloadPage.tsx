@@ -54,6 +54,7 @@ export function DownloadPage({ onNavigateToSettings }: DownloadPageProps) {
     clearCookieError,
     retryFailedDownload,
     updateItemTimeRange,
+    renameCompletedItem,
   } = useDownload();
 
   const { ffmpegStatus } = useDependencies();
@@ -73,7 +74,7 @@ export function DownloadPage({ onNavigateToSettings }: DownloadPageProps) {
 
   // Check if FFmpeg is required for current quality setting
   const ffmpegRequired =
-    FFMPEG_REQUIRED_QUALITIES.includes(settings.quality) && !ffmpegStatus?.installed;
+    FFMPEG_REQUIRED_QUALITIES.includes(settings.quality) && ffmpegStatus?.installed === false;
 
   // Handle start download with FFmpeg check
   const handleStartDownload = () => {
@@ -113,7 +114,6 @@ export function DownloadPage({ onNavigateToSettings }: DownloadPageProps) {
         <div className="flex-shrink-0 p-4 sm:p-6 space-y-3">
           {/* URL Input */}
           <UrlInput
-            disabled={isDownloading}
             isExpandingPlaylist={isExpandingPlaylist}
             onAddUrls={addFromText}
             onImportFile={importFromFile}
@@ -126,7 +126,7 @@ export function DownloadPage({ onNavigateToSettings }: DownloadPageProps) {
             settings={settings}
             disabled={isDownloading}
             totalFileSize={totalFileSize > 0 ? totalFileSize : undefined}
-            ffmpegInstalled={ffmpegStatus?.installed ?? false}
+            ffmpegInstalled={ffmpegStatus?.installed ?? true}
             onQualityChange={updateQuality}
             onFormatChange={updateFormat}
             onVideoCodecChange={updateVideoCodec}
@@ -157,6 +157,7 @@ export function DownloadPage({ onNavigateToSettings }: DownloadPageProps) {
             currentPlaylistInfo={currentPlaylistInfo}
             onRemove={removeItem}
             onUpdateTimeRange={updateItemTimeRange}
+            onRename={renameCompletedItem}
             onClearCompleted={clearCompleted}
           />
         </div>

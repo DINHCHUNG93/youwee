@@ -8,13 +8,32 @@ và dự án tuân theo [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [Unreleased]
 
 ### Thêm mới
+- **Tích hợp Aria2 làm trình tải ngoài** - Bổ sung hỗ trợ `aria2c` làm external downloader với tham số tùy chỉnh và xử lý lỗi đã bản địa hóa
+- **Đổi tên file đã tải từ Queue và Thư viện** - Thêm thao tác đổi tên sau khi tải xong (queue YouTube + Universal và Thư viện), đồng bộ đường dẫn/tên trong DB và giao diện đa ngôn ngữ
+- **Bộ lọc nâng cao và sắp xếp trong Thư viện** - Thêm panel Advanced Filters (loại media, khoảng ngày, định dạng, chất lượng), tìm kiếm theo `title + filepath`, và sắp xếp lịch sử có ghi nhớ lựa chọn sort
+
+### Thay đổi
+- **Xử lý queue động khi đang tải** - Worker queue giờ claim item theo thời gian thực, nên video thêm mới sẽ vào cuối hàng đợi và tự tải tiếp mà không cần bấm Start lại
+
+### Sửa lỗi
+
+## [0.12.0] - 2026-03-04
+
+### Thêm mới
 - **Bộ chọn nguồn dependency (yt-dlp/FFmpeg)** - Thêm tùy chọn trong Cài đặt → Phụ thuộc để chọn dùng binary do ứng dụng quản lý hoặc do hệ thống quản lý
 - **Xác nhận an toàn khi chuyển sang nguồn hệ thống** - Thêm hộp thoại xác nhận khi đổi yt-dlp/FFmpeg sang nguồn hệ thống để tránh bấm nhầm
 
 ### Thay đổi
 - **Nhãn nguồn hệ thống theo hệ điều hành** - Nhãn nguồn hệ thống giờ hiển thị theo nền tảng (`Homebrew` trên macOS, `PATH` trên Windows, trình quản lý gói trên Linux)
+- **Tự động tạo ghi chú phát hành GitHub trong luồng build** - Bật `generate_release_notes` trong workflow phát hành để bản phát hành có ghi chú tự sinh
+- **Tích hợp thanh tiêu đề tùy chỉnh trên Windows** - Thay title bar native của Windows bằng control tùy chỉnh theo theme ứng dụng (vùng kéo cửa sổ, thu nhỏ/phóng to/đóng)
 
 ### Sửa lỗi
+- **Ghi lịch sử tải xuống trên Windows** - Bắt chính xác đường dẫn file đầu ra cuối cùng trên Windows để bản tải hoàn tất luôn được thêm vào lịch sử Thư viện
+- **Phân tích đường dẫn tải lại trên Windows** - Sửa tách thư mục output khi tải lại để xử lý đúng đường dẫn dùng dấu `\`
+- **Xử lý output yt-dlp không phải UTF-8 trên Windows** - Thêm fallback decode GBK/ANSI và xử lý `--print-to-file` để vẫn lấy đúng đường dẫn file ở locale không UTF-8
+- **Tự động làm mới Thư viện khi tải xong** - Lịch sử Thư viện giờ tự refresh khi trạng thái tải chuyển sang `finished`
+- **Tương thích URL Douyin dạng modal** - Chuẩn hóa URL `douyin.com` có `modal_id` về dạng chuẩn `/video/{id}` trong backend yt-dlp và parser deep-link phía frontend
 
 ## [0.11.1] - 2026-03-01
 
