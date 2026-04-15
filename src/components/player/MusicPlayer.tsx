@@ -82,197 +82,212 @@ export function MusicPlayer() {
   if (!currentEntry) return null;
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const queueLabel =
+    queue.length > 1 ? t('player.trackCount', { count: queue.length }) : t('player.oneTrack');
 
   return (
-    <div
-      className={cn(
-        'flex-shrink-0 flex items-center gap-4 px-4 h-16',
-        'border-t border-white/[0.06] dark:border-white/[0.04]',
-        'bg-card/60 backdrop-blur-xl',
-      )}
-    >
-      {/* Track info */}
-      <div className="flex items-center gap-3 w-56 flex-shrink-0 min-w-0">
-        {/* Thumbnail */}
-        <div className="relative w-9 h-9 flex-shrink-0 rounded-md overflow-hidden bg-muted">
-          {currentEntry.thumbnail && !thumbError ? (
-            <img
-              src={currentEntry.thumbnail.replace(/^http:\/\//, 'https://')}
-              alt=""
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-              onError={() => setThumbError(true)}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-primary/10">
-              <Volume2 className="w-4 h-4 text-primary/60" />
+    <div className="flex-shrink-0 px-3 pb-3 bg-background/20 backdrop-blur-xl">
+      <div
+        className={cn(
+          'relative overflow-hidden rounded-[1.4rem] border border-white/[0.1]',
+          'bg-background/78 shadow-[0_16px_40px_rgba(0,0,0,0.12)] backdrop-blur-2xl',
+          'dark:border-white/[0.07] dark:shadow-[0_22px_50px_rgba(0,0,0,0.3)]',
+        )}
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_hsl(var(--primary)/0.14),_transparent_32%),radial-gradient(circle_at_bottom_right,_hsl(var(--gradient-via)/0.16),_transparent_34%)]" />
+
+        <div className="relative flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-4 sm:py-3.5">
+          {/* Track info */}
+          <div className="flex min-w-0 items-center gap-3 sm:w-64 sm:flex-shrink-0">
+            <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-2xl bg-muted ring-1 ring-white/10">
+              {currentEntry.thumbnail && !thumbError ? (
+                <img
+                  src={currentEntry.thumbnail.replace(/^http:\/\//, 'https://')}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  referrerPolicy="no-referrer"
+                  onError={() => setThumbError(true)}
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-primary/10">
+                  <Volume2 className="h-4 w-4 text-primary/60" />
+                </div>
+              )}
+              {isPlaying && (
+                <span className="absolute bottom-1 right-1 h-2 w-2 rounded-full bg-primary shadow-[0_0_12px_hsl(var(--primary)/0.8)] animate-pulse" />
+              )}
             </div>
-          )}
-          {/* subtle playing animation dot */}
-          {isPlaying && (
-            <span className="absolute bottom-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-          )}
-        </div>
 
-        <div className="min-w-0">
-          <p className="text-xs font-medium truncate leading-tight" title={currentEntry.title}>
-            {currentEntry.title}
-          </p>
-          <p className="text-[10px] text-muted-foreground truncate mt-0.5 uppercase tracking-wide">
-            {currentEntry.format} ·{' '}
-            {queue.length > 1
-              ? t('player.trackCount', { count: queue.length })
-              : t('player.oneTrack')}
-          </p>
-        </div>
-      </div>
-
-      {/* Center: controls + progress */}
-      <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
-        {/* Playback buttons */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={playPrev}
-            className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
-            title={t('player.prev')}
-          >
-            <SkipBack className="w-4 h-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={togglePlay}
-            className={cn(
-              'w-8 h-8 rounded-full flex items-center justify-center transition-all',
-              'bg-primary text-primary-foreground hover:opacity-90 shadow-sm',
-            )}
-            title={isPlaying ? t('player.pause') : t('player.play')}
-          >
-            {isPlaying ? (
-              <Pause className="w-4 h-4 fill-current" />
-            ) : (
-              <Play className="w-4 h-4 fill-current translate-x-px" />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={playNext}
-            className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
-            title={t('player.next')}
-          >
-            <SkipForward className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Progress bar */}
-        <div className="flex items-center gap-2 w-full max-w-md">
-          <span className="text-[10px] text-muted-foreground tabular-nums w-6 text-right flex-shrink-0">
-            {formatTime(currentTime)}
-          </span>
-          <div className="relative flex-1 h-1 group">
-            <div className="absolute inset-y-0 w-full bg-muted rounded-full" />
-            <div
-              className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all"
-              style={{ width: `${progress}%` }}
-            />
-            <input
-              type="range"
-              min={0}
-              max={duration || 1}
-              step={0.1}
-              value={currentTime}
-              onChange={handleSeek}
-              className="absolute inset-0 w-full opacity-0 cursor-pointer h-full"
-            />
+            <div className="min-w-0">
+              <p
+                className="truncate text-sm font-semibold leading-tight"
+                title={currentEntry.title}
+              >
+                {currentEntry.title}
+              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                {currentEntry.format && (
+                  <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-primary">
+                    {currentEntry.format}
+                  </span>
+                )}
+                <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  {queueLabel}
+                </span>
+              </div>
+            </div>
           </div>
-          <span className="text-[10px] text-muted-foreground tabular-nums w-6 flex-shrink-0">
-            {formatTime(duration)}
-          </span>
-        </div>
-      </div>
 
-      {/* Right: mode + speed + volume + close */}
-      <div className="flex items-center gap-2 w-56 flex-shrink-0 justify-end">
-        {/* Play mode */}
-        <button
-          type="button"
-          onClick={cycleMode}
-          className={cn(
-            'p-1.5 rounded transition-colors',
-            mode === 'sequence' ? 'text-muted-foreground hover:text-foreground' : 'text-primary',
-          )}
-          title={
-            mode === 'sequence'
-              ? t('player.modeSequence')
-              : mode === 'repeat-one'
-                ? t('player.modeRepeatOne')
-                : t('player.modeShuffle')
-          }
-        >
-          {mode === 'shuffle' ? (
-            <Shuffle className="w-3.5 h-3.5" />
-          ) : mode === 'repeat-one' ? (
-            <Repeat1 className="w-3.5 h-3.5" />
-          ) : (
-            <Repeat className="w-3.5 h-3.5" />
-          )}
-        </button>
+          {/* Center: controls + progress */}
+          <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+            <div className="flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={playPrev}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+                title={t('player.prev')}
+              >
+                <SkipBack className="h-4 w-4" />
+              </button>
 
-        <button
-          type="button"
-          onClick={cyclePlaybackRate}
-          className={cn(
-            'min-w-10 rounded-md border border-dashed px-2 py-1 text-[10px] font-medium tabular-nums transition-colors',
-            'border-border/60 text-muted-foreground hover:text-foreground hover:border-primary/50',
-            playbackRate !== 1 && 'border-primary/50 bg-primary/10 text-primary',
-          )}
-          title={t('player.playbackSpeed', { rate: playbackRate })}
-        >
-          {playbackRate}x
-        </button>
+              <button
+                type="button"
+                onClick={togglePlay}
+                className={cn(
+                  'inline-flex h-10 w-10 items-center justify-center rounded-xl transition-all',
+                  'bg-primary text-primary-foreground shadow-[0_10px_24px_hsl(var(--primary)/0.34)] hover:scale-[1.03] hover:opacity-95',
+                )}
+                title={isPlaying ? t('player.pause') : t('player.play')}
+              >
+                {isPlaying ? (
+                  <Pause className="h-4 w-4 fill-current" />
+                ) : (
+                  <Play className="h-4 w-4 translate-x-px fill-current" />
+                )}
+              </button>
 
-        {/* Volume */}
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setVolume(volume > 0 ? 0 : 1)}
-            className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
-          >
-            {volume === 0 ? (
-              <VolumeX className="w-3.5 h-3.5" />
-            ) : (
-              <Volume2 className="w-3.5 h-3.5" />
-            )}
-          </button>
-          <div className="relative w-16 h-1 group">
-            <div className="absolute inset-y-0 w-full bg-muted rounded-full" />
-            <div
-              className="absolute inset-y-0 left-0 rounded-full bg-primary"
-              style={{ width: `${volume * 100}%` }}
-            />
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.02}
-              value={volume}
-              onChange={handleVolume}
-              className="absolute inset-0 w-full opacity-0 cursor-pointer h-full"
-            />
+              <button
+                type="button"
+                onClick={playNext}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+                title={t('player.next')}
+              >
+                <SkipForward className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex w-full items-center gap-2.5 sm:max-w-xl sm:self-center lg:max-w-2xl">
+              <span className="w-9 flex-shrink-0 text-right text-[10px] tabular-nums text-muted-foreground">
+                {formatTime(currentTime)}
+              </span>
+              <div className="group relative h-2 flex-1">
+                <div className="absolute inset-y-0 w-full rounded-full bg-muted/80 ring-1 ring-white/[0.05]" />
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+                <div
+                  className="absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border border-primary/40 bg-background shadow-[0_2px_10px_rgba(0,0,0,0.18)] transition-all group-hover:scale-110"
+                  style={{ left: `calc(${progress}% - 0.4375rem)` }}
+                />
+                <input
+                  type="range"
+                  min={0}
+                  max={duration || 1}
+                  step={0.1}
+                  value={currentTime}
+                  onChange={handleSeek}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
+              </div>
+              <span className="w-9 flex-shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                {formatTime(duration)}
+              </span>
+            </div>
+          </div>
+
+          {/* Right: mode + speed + volume */}
+          <div className="flex items-center justify-between gap-2 sm:flex-shrink-0 sm:justify-end">
+            <div className="flex items-center gap-1.5 rounded-2xl bg-background/60 px-2 py-1.5 ring-1 ring-white/[0.06]">
+              <button
+                type="button"
+                onClick={cycleMode}
+                className={cn(
+                  'inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors',
+                  mode === 'sequence'
+                    ? 'text-muted-foreground hover:text-foreground'
+                    : 'text-primary',
+                )}
+                title={
+                  mode === 'sequence'
+                    ? t('player.modeSequence')
+                    : mode === 'repeat-one'
+                      ? t('player.modeRepeatOne')
+                      : t('player.modeShuffle')
+                }
+              >
+                {mode === 'shuffle' ? (
+                  <Shuffle className="h-3.5 w-3.5" />
+                ) : mode === 'repeat-one' ? (
+                  <Repeat1 className="h-3.5 w-3.5" />
+                ) : (
+                  <Repeat className="h-3.5 w-3.5" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={cyclePlaybackRate}
+                className={cn(
+                  'min-w-11 rounded-md border border-dashed px-2 py-1 text-[10px] font-medium tabular-nums transition-colors',
+                  'border-border/60 text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                  playbackRate !== 1 && 'border-primary/45 bg-primary/10 text-primary',
+                )}
+                title={t('player.playbackSpeed', { rate: playbackRate })}
+              >
+                {playbackRate}x
+              </button>
+
+              <div className="flex items-center gap-1.5 rounded-xl bg-muted/50 px-2 py-1">
+                <button
+                  type="button"
+                  onClick={() => setVolume(volume > 0 ? 0 : 1)}
+                  className="flex-shrink-0 rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {volume === 0 ? (
+                    <VolumeX className="h-3.5 w-3.5" />
+                  ) : (
+                    <Volume2 className="h-3.5 w-3.5" />
+                  )}
+                </button>
+                <div className="group relative h-1.5 w-16">
+                  <div className="absolute inset-y-0 w-full rounded-full bg-background/90" />
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full bg-primary"
+                    style={{ width: `${volume * 100}%` }}
+                  />
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.02}
+                    value={volume}
+                    onChange={handleVolume}
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={close}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+                  title={t('player.close')}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Close */}
-        <button
-          type="button"
-          onClick={close}
-          className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors ml-1"
-          title={t('player.close')}
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
       </div>
     </div>
   );
