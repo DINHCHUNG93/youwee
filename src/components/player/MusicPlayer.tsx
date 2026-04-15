@@ -22,6 +22,8 @@ function formatTime(secs: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+const PLAYBACK_RATES = [0.75, 1, 1.25, 1.5, 2];
+
 export function MusicPlayer() {
   const { t } = useTranslation('pages');
   const {
@@ -30,6 +32,7 @@ export function MusicPlayer() {
     duration,
     currentTime,
     volume,
+    playbackRate,
     mode,
     queue,
     togglePlay,
@@ -37,6 +40,7 @@ export function MusicPlayer() {
     playPrev,
     seek,
     setVolume,
+    setPlaybackRate,
     setMode,
     close,
   } = usePlayer();
@@ -68,6 +72,12 @@ export function MusicPlayer() {
     const next = modes[(modes.indexOf(mode) + 1) % modes.length];
     setMode(next);
   }, [mode, setMode]);
+
+  const cyclePlaybackRate = useCallback(() => {
+    const currentIndex = PLAYBACK_RATES.indexOf(playbackRate);
+    const nextRate = PLAYBACK_RATES[(currentIndex + 1) % PLAYBACK_RATES.length] ?? 1;
+    setPlaybackRate(nextRate);
+  }, [playbackRate, setPlaybackRate]);
 
   if (!currentEntry) return null;
 
@@ -157,7 +167,7 @@ export function MusicPlayer() {
         </div>
 
         {/* Progress bar */}
-        <div className="flex items-center gap-2 w-full max-w-sm">
+        <div className="flex items-center gap-2 w-full max-w-md">
           <span className="text-[10px] text-muted-foreground tabular-nums w-6 text-right flex-shrink-0">
             {formatTime(currentTime)}
           </span>
@@ -183,8 +193,8 @@ export function MusicPlayer() {
         </div>
       </div>
 
-      {/* Right: mode + volume + close */}
-      <div className="flex items-center gap-2 w-40 flex-shrink-0 justify-end">
+      {/* Right: mode + speed + volume + close */}
+      <div className="flex items-center gap-2 w-56 flex-shrink-0 justify-end">
         {/* Play mode */}
         <button
           type="button"
@@ -210,6 +220,19 @@ export function MusicPlayer() {
           )}
         </button>
 
+        <button
+          type="button"
+          onClick={cyclePlaybackRate}
+          className={cn(
+            'min-w-10 rounded-md border border-dashed px-2 py-1 text-[10px] font-medium tabular-nums transition-colors',
+            'border-border/60 text-muted-foreground hover:text-foreground hover:border-primary/50',
+            playbackRate !== 1 && 'border-primary/50 bg-primary/10 text-primary',
+          )}
+          title={t('player.playbackSpeed', { rate: playbackRate })}
+        >
+          {playbackRate}x
+        </button>
+
         {/* Volume */}
         <div className="flex items-center gap-1.5">
           <button
@@ -226,7 +249,7 @@ export function MusicPlayer() {
           <div className="relative w-16 h-1 group">
             <div className="absolute inset-y-0 w-full bg-muted rounded-full" />
             <div
-              className="absolute inset-y-0 left-0 bg-muted-foreground/50 rounded-full"
+              className="absolute inset-y-0 left-0 rounded-full bg-primary"
               style={{ width: `${volume * 100}%` }}
             />
             <input

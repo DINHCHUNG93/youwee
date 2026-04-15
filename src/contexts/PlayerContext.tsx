@@ -48,6 +48,7 @@ interface PlayerContextType {
   duration: number;
   currentTime: number;
   volume: number;
+  playbackRate: number;
   mode: PlayMode;
   playFrom: (queue: HistoryEntry[], index: number) => void;
   togglePlay: () => void;
@@ -55,6 +56,7 @@ interface PlayerContextType {
   playPrev: () => void;
   seek: (time: number) => void;
   setVolume: (vol: number) => void;
+  setPlaybackRate: (rate: number) => void;
   setMode: (mode: PlayMode) => void;
   close: () => void;
 }
@@ -73,6 +75,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [volume, setVolumeState] = useState(() => {
     const saved = localStorage.getItem('youwee_player_volume');
     return saved ? parseFloat(saved) : 1;
+  });
+  const [playbackRate, setPlaybackRateState] = useState(() => {
+    const saved = localStorage.getItem('youwee_player_playback_rate');
+    const parsed = saved ? parseFloat(saved) : 1;
+    return Number.isFinite(parsed) ? parsed : 1;
   });
   const [mode, setModeState] = useState<PlayMode>(() => {
     return (localStorage.getItem('youwee_player_mode') as PlayMode) ?? 'sequence';
@@ -245,6 +252,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [volume]);
 
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = playbackRate;
+    }
+  }, [playbackRate]);
+
   const playFrom = useCallback(
     (newQueue: HistoryEntry[], index: number) => {
       void loadAndPlayAtIndex(newQueue, index);
@@ -295,6 +308,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setVolumeState(clamped);
     localStorage.setItem('youwee_player_volume', String(clamped));
     if (audioRef.current) audioRef.current.volume = clamped;
+  }, []);
+
+  const setPlaybackRate = useCallback((rate: number) => {
+    const clamped = Math.max(0.5, Math.min(2, rate));
+    setPlaybackRateState(clamped);
+    localStorage.setItem('youwee_player_playback_rate', String(clamped));
+    if (audioRef.current) audioRef.current.playbackRate = clamped;
   }, []);
 
   const setMode = useCallback((m: PlayMode) => {
@@ -403,6 +423,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         duration,
         currentTime,
         volume,
+        playbackRate,
         mode,
         playFrom,
         togglePlay,
@@ -410,6 +431,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         playPrev,
         seek,
         setVolume,
+        setPlaybackRate,
         setMode,
         close,
       }}
