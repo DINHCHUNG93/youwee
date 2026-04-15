@@ -276,15 +276,16 @@ export function MusicPlayer() {
                     className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={close}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
-                  title={t('player.close')}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
               </div>
+
+              <button
+                type="button"
+                onClick={close}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+                title={t('player.close')}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
           </div>
         </div>

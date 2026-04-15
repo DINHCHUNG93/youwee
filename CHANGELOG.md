@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Floating music player** - Added an in-app audio player with queue, playback controls, speed, and volume
 - **Aria2 external downloader integration** - Added support for `aria2c` as an external downloader with customizable arguments and localized error handling
 - **Rename downloaded files from Queue and Library** - Added post-download rename actions (YouTube + Universal queue and Library) with DB/path synchronization and multilingual UI texts
 - **Advanced Library filters and sorting** - Added Advanced Filters panel (media type, date range, format, quality), `title + filepath` search, and sortable history list with persisted sort preference
