@@ -15,6 +15,7 @@ import { AIProvider } from '@/contexts/AIContext';
 import { ChannelsProvider } from '@/contexts/ChannelsContext';
 import { DependenciesProvider, useDependencies } from '@/contexts/DependenciesContext';
 import { DownloadProvider, useDownload } from '@/contexts/DownloadContext';
+import { GalleryDlProvider } from '@/contexts/GalleryDlContext';
 import { HistoryProvider } from '@/contexts/HistoryContext';
 import { LogProvider } from '@/contexts/LogContext';
 import { MetadataProvider } from '@/contexts/MetadataContext';
@@ -32,6 +33,7 @@ import {
 import {
   ChannelsPage,
   DownloadPage,
+  GalleryPage,
   HistoryPage,
   LogsPage,
   MetadataPage,
@@ -317,6 +319,9 @@ function AppContent() {
         {currentPage === 'universal' && (
           <UniversalPage onNavigateToSettings={() => setCurrentPage('settings')} />
         )}
+        {currentPage === 'gallery' && (
+          <GalleryPage onNavigateToSettings={() => setCurrentPage('settings')} />
+        )}
         {currentPage === 'channels' && <ChannelsPage />}
         {currentPage === 'summary' && <SummaryPage />}
         {currentPage === 'processing' && (
@@ -373,25 +378,27 @@ export function App() {
       <DependenciesProvider>
         <DownloadProvider>
           <UniversalProvider>
-            <ChannelsProvider>
-              <LogProvider>
-                <HistoryProvider>
-                  <PlayerProvider>
-                    <AIProvider>
-                      <ProcessingProvider>
-                        <SubtitleProvider>
-                          <MetadataProvider>
-                            <UpdaterWrapper>
-                              <AppContent />
-                            </UpdaterWrapper>
-                          </MetadataProvider>
-                        </SubtitleProvider>
-                      </ProcessingProvider>
-                    </AIProvider>
-                  </PlayerProvider>
-                </HistoryProvider>
-              </LogProvider>
-            </ChannelsProvider>
+            <GalleryDlProvider>
+              <ChannelsProvider>
+                <LogProvider>
+                  <HistoryProvider>
+                    <PlayerProvider>
+                      <AIProvider>
+                        <ProcessingProvider>
+                          <SubtitleProvider>
+                            <MetadataProvider>
+                              <UpdaterWrapper>
+                                <AppContent />
+                              </UpdaterWrapper>
+                            </MetadataProvider>
+                          </SubtitleProvider>
+                        </ProcessingProvider>
+                      </AIProvider>
+                    </PlayerProvider>
+                  </HistoryProvider>
+                </LogProvider>
+              </ChannelsProvider>
+            </GalleryDlProvider>
           </UniversalProvider>
         </DownloadProvider>
       </DependenciesProvider>

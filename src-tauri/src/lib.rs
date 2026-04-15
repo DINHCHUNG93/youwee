@@ -144,6 +144,8 @@ pub fn run() {
             // Download commands
             commands::download_video,
             commands::stop_download,
+            commands::download_gallery,
+            commands::stop_gallery_download,
             // Video info commands
             commands::get_video_info,
             commands::get_playlist_entries,
@@ -172,6 +174,7 @@ pub fn run() {
             commands::check_deno,
             commands::check_deno_update,
             commands::download_deno,
+            commands::check_gallerydl,
             // Browser detection
             commands::detect_installed_browsers,
             commands::get_browser_profiles,
