@@ -1,4 +1,4 @@
-import { convertFileSrc } from '@tauri-apps/api/core';
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import {
   createContext,
   type ReactNode,
@@ -14,6 +14,31 @@ import { reconcilePlayableAudioQueue } from '@/lib/player-queue';
 import type { HistoryEntry } from '@/lib/types';
 
 export type PlayMode = 'sequence' | 'repeat-one' | 'shuffle';
+
+const PLAYER_ENTRY_KEYS: Array<keyof HistoryEntry> = [
+  'id',
+  'url',
+  'title',
+  'thumbnail',
+  'filepath',
+  'filesize',
+  'duration',
+  'quality',
+  'format',
+  'source',
+  'downloaded_at',
+  'file_exists',
+  'summary',
+  'time_range',
+];
+
+function areHistoryEntriesEqual(
+  left: HistoryEntry | null | undefined,
+  right: HistoryEntry | null | undefined,
+): boolean {
+  if (!left || !right) return left === right;
+  return PLAYER_ENTRY_KEYS.every((key) => left[key] === right[key]);
+}
 
 interface PlayerContextType {
   queue: HistoryEntry[];
@@ -37,7 +62,7 @@ interface PlayerContextType {
 const PlayerContext = createContext<PlayerContextType | null>(null);
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
-  const { entries } = useHistory();
+  const { historyVersion } = useHistory();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [queue, setQueue] = useState<HistoryEntry[]>([]);
@@ -191,7 +216,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      commitQueueState(nextQueue, Math.min(currentIndexSnapshot, nextQueue.length - 1));
+      const nextIndex = Math.min(currentIndexSnapshot, nextQueue.length - 1);
+      void loadAndPlayAtIndex(nextQueue, nextIndex);
     };
 
     audio.addEventListener('timeupdate', onTimeUpdate);
@@ -211,7 +237,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       audio.pause();
       audio.src = '';
     };
-  }, [commitQueueState, getNextIndex, loadAndPlayAtIndex]);
+  }, [getNextIndex, loadAndPlayAtIndex]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -295,39 +321,75 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [commitQueueState]);
 
   useEffect(() => {
-    const currentQueue = queueRef.current;
-    if (currentQueue.length === 0) return;
+    void historyVersion;
+    const queuedIds = queueRef.current.map((entry) => entry.id);
+    if (queuedIds.length === 0) return;
 
-    const currentIndexSnapshot = currentIndexRef.current;
+    let cancelled = false;
 
-    const reconciled = reconcilePlayableAudioQueue(currentQueue, currentIndexSnapshot, entries);
-    const sameQueue =
-      reconciled.queue.length === currentQueue.length &&
-      reconciled.currentIndex === currentIndexSnapshot &&
-      reconciled.queue.every((entry, index) => entry.id === currentQueue[index]?.id);
+    const reconcileQueue = async () => {
+      try {
+        const latestEntries = await invoke<HistoryEntry[]>('get_history_entries_by_ids', {
+          ids: queuedIds,
+        });
 
-    if (sameQueue) return;
+        if (cancelled) return;
 
-    if (reconciled.queue.length === 0) {
-      close();
-      return;
-    }
+        const currentQueue = queueRef.current;
+        const currentIndexSnapshot = currentIndexRef.current;
 
-    const previousEntry = currentQueue[currentIndexSnapshot] ?? null;
-    const nextEntry = reconciled.queue[reconciled.currentIndex] ?? null;
+        if (
+          currentQueue.length !== queuedIds.length ||
+          currentQueue.some((entry, index) => entry.id !== queuedIds[index])
+        ) {
+          return;
+        }
 
-    const shouldReload =
-      reconciled.currentIndex !== currentIndexSnapshot || previousEntry?.id !== nextEntry?.id;
+        const reconciled = reconcilePlayableAudioQueue(
+          currentQueue,
+          currentIndexSnapshot,
+          latestEntries,
+        );
+        const sameQueue =
+          reconciled.queue.length === currentQueue.length &&
+          reconciled.currentIndex === currentIndexSnapshot &&
+          reconciled.queue.every((entry, index) =>
+            areHistoryEntriesEqual(entry, currentQueue[index]),
+          );
 
-    if (shouldReload) {
-      const audio = audioRef.current;
-      const shouldAutoplay = audio ? !audio.paused : true;
-      void loadAndPlayAtIndex(reconciled.queue, reconciled.currentIndex, shouldAutoplay);
-      return;
-    }
+        if (sameQueue) return;
 
-    commitQueueState(reconciled.queue, reconciled.currentIndex);
-  }, [entries, close, loadAndPlayAtIndex, commitQueueState]);
+        if (reconciled.queue.length === 0) {
+          close();
+          return;
+        }
+
+        const previousEntry = currentQueue[currentIndexSnapshot] ?? null;
+        const nextEntry = reconciled.queue[reconciled.currentIndex] ?? null;
+        const shouldReload =
+          reconciled.currentIndex !== currentIndexSnapshot ||
+          previousEntry?.id !== nextEntry?.id ||
+          previousEntry?.filepath !== nextEntry?.filepath;
+
+        if (shouldReload) {
+          const audio = audioRef.current;
+          const shouldAutoplay = audio ? !audio.paused : true;
+          void loadAndPlayAtIndex(reconciled.queue, reconciled.currentIndex, shouldAutoplay);
+          return;
+        }
+
+        commitQueueState(reconciled.queue, reconciled.currentIndex);
+      } catch (error) {
+        console.error('[Player] Failed to refresh queued history entries:', error);
+      }
+    };
+
+    void reconcileQueue();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [historyVersion, close, loadAndPlayAtIndex, commitQueueState]);
 
   const currentEntry = queue[currentIndex] ?? null;
 

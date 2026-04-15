@@ -6,7 +6,11 @@ import {
   reconcilePlayableAudioQueue,
 } from '../src/lib/player-queue';
 
-function makeEntry(overrides: Partial<MinimalHistoryEntry> = {}): MinimalHistoryEntry {
+interface TestEntry extends MinimalHistoryEntry {
+  title?: string;
+}
+
+function makeEntry(overrides: Partial<TestEntry> = {}): TestEntry {
   return {
     id: '1',
     filepath: 'C:\\Music\\track.mp3',
@@ -61,6 +65,18 @@ describe('reconcilePlayableAudioQueue', () => {
 
     expect(result.queue.map((entry) => entry.id)).toEqual(['a', 'b', 'c']);
     expect(result.currentIndex).toBe(1);
+    expect(result.removedCurrent).toBe(false);
+  });
+
+  test('refreshes queued metadata when the same track ids are returned with new fields', () => {
+    const queue = [makeEntry({ id: 'a', title: 'Old title', filepath: 'C:\\Music\\old.mp3' })];
+    const refreshed = [makeEntry({ id: 'a', title: 'New title', filepath: 'C:\\Music\\new.mp3' })];
+
+    const result = reconcilePlayableAudioQueue(queue, 0, refreshed);
+
+    expect(result.queue[0]?.title).toBe('New title');
+    expect(result.queue[0]?.filepath).toBe('C:\\Music\\new.mp3');
+    expect(result.currentIndex).toBe(0);
     expect(result.removedCurrent).toBe(false);
   });
 

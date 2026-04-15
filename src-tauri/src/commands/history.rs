@@ -2,8 +2,9 @@ use std::path::{Path, PathBuf};
 
 use crate::database::{
     add_history_internal, add_history_with_summary, clear_history_from_db, delete_history_from_db,
-    get_history_count_from_db, get_history_from_db, update_history_filepath_and_title,
-    update_history_filepath_and_title_by_id, update_history_summary,
+    get_history_count_from_db, get_history_entries_by_ids_from_db, get_history_from_db,
+    update_history_filepath_and_title, update_history_filepath_and_title_by_id,
+    update_history_summary,
 };
 use crate::types::{HistoryAdvancedFilters, HistoryEntry, HistorySort};
 
@@ -52,6 +53,11 @@ pub fn get_history(
     sort: Option<HistorySort>,
 ) -> Result<Vec<HistoryEntry>, String> {
     get_history_from_db(limit, offset, source, search, filters, sort)
+}
+
+#[tauri::command]
+pub fn get_history_entries_by_ids(ids: Vec<String>) -> Result<Vec<HistoryEntry>, String> {
+    get_history_entries_by_ids_from_db(ids)
 }
 
 #[tauri::command]

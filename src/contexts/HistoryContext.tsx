@@ -33,6 +33,7 @@ interface RedownloadTask {
 
 interface HistoryContextType {
   entries: HistoryEntry[];
+  historyVersion: number;
   filter: HistoryFilter;
   search: string;
   advancedFilters: HistoryAdvancedFilters;
@@ -133,13 +134,9 @@ interface RenameDownloadedFileResult {
   newTitle: string;
 }
 
-interface RenameDownloadedFileResult {
-  newFilepath: string;
-  newTitle: string;
-}
-
 export function HistoryProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
+  const [historyVersion, setHistoryVersion] = useState(0);
   const [filter, setFilter] = useState<HistoryFilter>('all');
   const [search, setSearch] = useState('');
   const [advancedFilters, setAdvancedFiltersState] =
@@ -241,6 +238,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
 
       setEntries(result);
       setTotalCount(count);
+      setHistoryVersion((prev) => prev + 1);
 
       const scopeCandidates = result
         .filter((entry) => entry.filepath.trim())
@@ -277,6 +275,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
       await invoke('delete_history', { id });
       setEntries((prev) => prev.filter((e) => e.id !== id));
       setTotalCount((prev) => Math.max(0, prev - 1));
+      setHistoryVersion((prev) => prev + 1);
     } catch (error) {
       console.error('Failed to delete history entry:', error);
       throw error;
@@ -288,6 +287,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
       await invoke('clear_history');
       setEntries([]);
       setTotalCount(0);
+      setHistoryVersion((prev) => prev + 1);
     } catch (error) {
       console.error('Failed to clear history:', error);
       throw error;
@@ -345,6 +345,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
             : item,
         ),
       );
+      setHistoryVersion((prev) => prev + 1);
     },
     [entries],
   );
@@ -569,6 +570,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
     <HistoryContext.Provider
       value={{
         entries,
+        historyVersion,
         filter,
         search,
         advancedFilters,
