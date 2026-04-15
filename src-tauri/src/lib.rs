@@ -186,11 +186,15 @@ pub fn run() {
             // History commands
             commands::add_history,
             commands::get_history,
+            commands::get_history_entries_by_ids,
             commands::delete_history,
             commands::clear_history,
             commands::get_history_count,
             commands::open_file_location,
             commands::check_file_exists,
+            // Asset scope & history helpers
+            commands::allow_asset_file,
+            commands::sync_asset_scope_paths,
             commands::rename_downloaded_file,
             commands::sync_history_renamed_entry,
             commands::update_summary,

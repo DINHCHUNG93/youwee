@@ -1,5 +1,6 @@
 mod logs;
 mod history;
+mod assets;
 mod video;
 mod download;
 mod dependencies;
@@ -13,6 +14,7 @@ mod external;
 
 pub use logs::*;
 pub use history::*;
+pub use assets::*;
 pub use video::*;
 pub use download::*;
 pub use dependencies::*;
