@@ -1,3 +1,23 @@
+
+
+Nguồn mở giao diện đẹp Video downloader + AI workflow all-in-one (chạy local, có bản cài sẵn cho người dùng cuối trên Windows, Mac, Linux ❤️)
+
+Tính năng nổi bật:
+
+* Tải video/audio từ 1800+ nền tảng (YouTube, TikTok, Instagram…)
+* Hỗ trợ playlist, batch download, live stream
+* Chọn chất lượng, cắt theo time range
+* Theo dõi channel & auto download video mới
+* Tóm tắt video bằng AI (Gemini / OpenAI / Ollama)
+* Edit video bằng prompt tự nhiên (cut, trim, extract…)
+* Tạo, dịch, sửa subtitle bằng AI
+* Subtitle editor chuyên sâu (waveform, sync, SRT/VTT/ASS)
+* Hậu kỳ tự động: metadata, thumbnail, subtitle, skip sponsor
+* Nhẹ, chạy local (Tauri), không ads, không tracking
+
+#TiniX #AItools #OpenSource #VideoAutomation #ContentCreator
+
+
 # Youwee
 
 <div align="center">
